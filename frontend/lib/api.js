@@ -5,8 +5,12 @@ export async function apiRequest(endpoint, options = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
 
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
+  }
+
+  // multipart/form-data가 아닌 경우에만 Content-Type 설정
+  if (!options.isMultipart) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (token) {
@@ -17,6 +21,9 @@ export async function apiRequest(endpoint, options = {}) {
     ...options,
     headers,
   }
+  
+  // isMultipart 플래그 제거 (fetch에 전달하지 않음)
+  delete config.isMultipart
 
   try {
     const response = await fetch(url, config)
@@ -37,9 +44,14 @@ export async function apiRequest(endpoint, options = {}) {
     const data = await response.json()
     return data
   } catch (error) {
-    console.error('API request error:', error)
-    console.error('Request URL:', url)
-    console.error('Request config:', config)
+    // 음성 인식 관련 에러는 조용히 처리 (콘솔 에러 출력 안 함)
+    const isVoiceTranscribeError = endpoint.includes('/voice-order/transcribe')
+    
+    if (!isVoiceTranscribeError) {
+      console.error('API request error:', error)
+      console.error('Request URL:', url)
+      console.error('Request config:', config)
+    }
     
     // More specific error messages
     if (error.message === 'Failed to fetch') {

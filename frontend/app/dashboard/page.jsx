@@ -249,7 +249,7 @@ export default function DashboardPage() {
               menuItems.forEach(item => {
                 itemMap[item.id] = {
                   name: item.name,
-                  pricePerUnit: item.pricePerUnit || 0,
+                  pricePerUnit: item.additionalPrice || item.pricePerUnit || 0,
                   defaultQuantity: item.defaultQuantity ?? 0,
                 }
               })

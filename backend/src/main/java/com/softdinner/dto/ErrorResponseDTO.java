@@ -6,6 +6,7 @@ import java.time.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ErrorResponseDTO {
     
     private LocalDateTime timestamp;
