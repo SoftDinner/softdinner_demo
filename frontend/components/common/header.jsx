@@ -15,7 +15,7 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <div className="text-2xl font-serif font-bold text-primary">Mr. 대박 디너서비스</div>
+            <div className="text-2xl font-bold text-primary">Mr. 대박 디너서비스</div>
           </Link>
 
           <div className="hidden md:flex items-center gap-4">

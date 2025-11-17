@@ -8,15 +8,15 @@ import Header from "@/components/common/header"
 import Footer from "@/components/common/footer"
 import { menuAPI } from "@/lib/services/menu.service"
 
-// 아이콘 매핑
-const getDinnerIcon = (name) => {
-  const iconMap = {
-    "Valentine Dinner": "💝",
-    "French Dinner": "🇫🇷",
-    "English Dinner": "🇬🇧",
-    "Champagne Feast": "🍾",
+// 이미지 매핑
+const getDinnerImage = (name) => {
+  const imageMap = {
+    "Valentine Dinner": "/images/valentine.png",
+    "French Dinner": "/images/french.png",
+    "English Dinner": "/images/english.png",
+    "Champagne Feast": "/images/champagne.png",
   }
-  return iconMap[name] || "🍽️"
+  return imageMap[name] || "/images/valentine.png"
 }
 
 export default function HomePage() {
@@ -37,7 +37,7 @@ export default function HomePage() {
         name: dinner.name,
         description: dinner.description || "",
         basePrice: Number(dinner.basePrice || 0),
-        icon: getDinnerIcon(dinner.name),
+        image: getDinnerImage(dinner.name),
       }))
       
       // 발렌타인, 프렌치, 잉글리시, 샴페인 순서로 정렬
@@ -76,7 +76,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-10 container mx-auto px-4 text-center">
-            <h1 className="text-5xl md:text-7xl font-serif font-bold text-foreground mb-6 text-balance">
+            <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 text-balance">
               특별한 날을 위한
               <br />
               프리미엄 디너
@@ -91,7 +91,7 @@ export default function HomePage() {
 
         <section className="py-16 bg-secondary/30">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-center text-foreground mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-foreground mb-12">
               프리미엄 디너 컬렉션
             </h2>
             {loading ? (
@@ -105,8 +105,12 @@ export default function HomePage() {
                     key={dinner.id}
                     className="bg-card rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
                   >
-                    <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                      <span className="text-8xl group-hover:scale-110 transition-transform">{dinner.icon}</span>
+                    <div className="h-48 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={dinner.image} 
+                        alt={dinner.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                      />
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-semibold text-foreground mb-2">{dinner.name}</h3>
@@ -135,7 +139,7 @@ export default function HomePage() {
         <section className="py-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-6">단골 혜택 프로그램</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">단골 혜택 프로그램</h2>
               <p className="text-lg text-muted-foreground mb-12">
                 주문할수록 커지는 할인 혜택
                 <br />
@@ -143,16 +147,15 @@ export default function HomePage() {
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
-                  { tier: "브론즈", discount: "0%", emoji: "🥉" },
-                  { tier: "실버", discount: "5%", emoji: "🥈" },
-                  { tier: "골드", discount: "10%", emoji: "🥇" },
-                  { tier: "플래티넘", discount: "20%", emoji: "💎" },
+                  { tier: "브론즈", discount: "0%" },
+                  { tier: "실버", discount: "5%" },
+                  { tier: "골드", discount: "10%" },
+                  { tier: "플래티넘", discount: "20%" },
                 ].map((tier) => (
                   <div
                     key={tier.tier}
                     className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow"
                   >
-                    <div className="text-4xl mb-3">{tier.emoji}</div>
                     <div className="text-lg font-semibold text-foreground mb-1">{tier.tier}</div>
                     <div className="text-2xl font-bold text-green-600">{tier.discount}</div>
                   </div>

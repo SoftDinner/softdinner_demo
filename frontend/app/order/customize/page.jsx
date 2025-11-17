@@ -10,46 +10,6 @@ import useOrderStore from "@/store/orderStore"
 import { menuAPI } from "@/lib/services/menu.service"
 import { orderService } from "@/lib/services/order.service"
 
-// 아이콘 매핑 (DB에 없는 필드이므로 이름으로 매핑)
-const getItemIcon = (name) => {
-  const iconMap = {
-    "스테이크": "🥩",
-    "와인": "🍷",
-    "바게트빵": "🥖",
-    "커피": "☕",
-    "샴페인": "🍾",
-    "샐러드": "🥗",
-    "베이컨": "🥓",
-    "에그스크램블": "🍳",
-    "로제 와인": "🍷",
-    "비프 스테이크": "🥩",
-    "랍스터": "🦞",
-    "트러플 파스타": "🍝",
-    "초콜릿 디저트": "🍫",
-    "레드 로즈": "🌹",
-    "프렌치 와인": "🍷",
-    "오리 콩피": "🦆",
-    "푸아그라": "🥓",
-    "프렌치 어니언 수프": "🍲",
-    "에스카르고": "🐌",
-    "크렘 브륄레": "🍮",
-    "에스프레소": "☕",
-    "잉글리시 티": "🫖",
-    "비프 웰링턴": "🥩",
-    "피쉬 앤 칩스": "🐟",
-    "셰퍼드 파이": "🥧",
-    "요크셔 푸딩": "🧁",
-    "스콘": "🥐",
-    "트라이플": "🍰",
-    "캐비어": "🥚",
-    "와규 스테이크": "🥩",
-    "킹크랩": "🦀",
-    "트러플 리조또": "🍚",
-    "굴": "🦪",
-    "마카롱": "🍪",
-  }
-  return iconMap[name] || "🍽️"
-}
 
 // 하드코딩된 MENU_ITEMS 제거 - 모든 데이터는 API에서 가져옵니다
 
@@ -157,7 +117,6 @@ export default function CustomizePage() {
                 canRemove: item.canRemove !== false, // 기본값 true
                 canIncrease: item.canIncrease !== false, // 기본값 true
                 canDecrease: item.canDecrease !== false, // 기본값 true
-                icon: getItemIcon(item.name),
               })
             } else if (item && item.id && formattedItemMap.has(item.id)) {
               console.warn("중복된 메뉴 항목 발견 (포맷팅 중):", item.id, item.name)
@@ -384,7 +343,6 @@ export default function CustomizePage() {
                   <div className="flex items-start justify-between gap-4">
                     {/* 아이템 정보 */}
                     <div className="flex items-center gap-4 flex-1">
-                      <span className="text-4xl">{item.icon}</span>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-lg font-bold">{item.name}</h3>
@@ -493,7 +451,7 @@ export default function CustomizePage() {
                   return (
                     <div key={item.id} className="flex justify-between text-sm gap-2">
                       <span className="text-muted-foreground">
-                        {item.icon} {item.name} {quantityDiff > 0 ? '추가' : '감소'} {Math.abs(quantityDiff)}
+                        {item.name} {quantityDiff > 0 ? '추가' : '감소'} {Math.abs(quantityDiff)}
                         {item.unit}
                       </span>
                       <span className={`font-medium whitespace-nowrap ${quantityDiff > 0 ? 'text-primary' : 'text-green-600'}`}>

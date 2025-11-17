@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-lg font-serif font-bold text-primary mb-4">Mr. 대박 디너서비스</h3>
+            <h3 className="text-lg font-bold text-primary mb-4">Mr. 대박 디너서비스</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               프리미엄 디너 배달 서비스
               <br />

@@ -56,3 +56,5 @@ logs/
 
 # Docker
 .dockerignore
+
+backend/target/

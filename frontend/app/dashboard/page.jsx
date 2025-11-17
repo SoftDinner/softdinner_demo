@@ -339,7 +339,7 @@ export default function DashboardPage() {
       <main className="flex-1 py-8">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="mb-8">
-            <h1 className="text-3xl font-serif font-bold text-foreground mb-2">내 대시보드</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">내 대시보드</h1>
             <p className="text-muted-foreground">주문 내역을 확인하고 새로운 디너를 주문하세요</p>
           </div>
 
@@ -368,7 +368,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="mb-6">
-            <h2 className="text-2xl font-serif font-bold text-foreground mb-4">주문 내역</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">주문 내역</h2>
           </div>
 
           {orders.length === 0 ? (

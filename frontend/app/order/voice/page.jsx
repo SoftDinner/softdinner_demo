@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Mic, MicOff, Loader2, SendHorizontal, ArrowLeft } from "lucide-react"
 import Header from "@/components/common/header"
 import Footer from "@/components/common/footer"
@@ -298,17 +297,26 @@ export default function VoiceOrderPage() {
         ? new Date(orderData.deliveryDate).toISOString()
         : new Date(Date.now() + 86400000).toISOString() // 기본: 내일
       
+      // 사용자 정보 확인
+      if (!user || !user.address) {
+        throw new Error("주소 정보를 찾을 수 없습니다. 마이페이지에서 주소를 설정해주세요.")
+      }
+      
+      if (!user.cardNumber || !user.cardExpiry || !user.cardCvc) {
+        throw new Error("결제 정보를 찾을 수 없습니다. 마이페이지에서 결제 정보를 설정해주세요.")
+      }
+
       // 주문 생성 요청 데이터
       const createOrderRequest = {
         dinnerId: orderData.dinnerId,
         styleId: orderData.styleId,
-        deliveryAddress: "서울시 강남구 테헤란로 123 (테스트 주소)",
+        deliveryAddress: user.address,
         deliveryDate: deliveryDate,
         customizations: customizations,
         paymentInfo: {
-          cardNumber: "4111-1111-1111-1111",
-          expiryDate: "12/25",
-          cvc: "123"
+          cardNumber: user.cardNumber,
+          expiryDate: user.cardExpiry,
+          cvc: user.cardCvc
         }
       }
       
@@ -367,155 +375,143 @@ export default function VoiceOrderPage() {
   return (
     <>
       <Header user={user} role="customer" />
-      <div className="min-h-screen bg-background py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* 헤더 */}
-          <Button variant="ghost" className="mb-6" onClick={() => router.push('/dinners')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            뒤로가기
-          </Button>
-
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">🎤 음성 주문</h1>
-            <p className="text-muted-foreground">
-              마이크 버튼을 눌러 음성으로 주문하거나 텍스트로 대화하세요
-            </p>
+      <div className="flex flex-col h-[calc(100vh-140px)] bg-background">
+        <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-4 pt-4 min-h-0">
+          {/* 대화 창 - 화면 높이에 꽉 차게, 스크롤 가능 */}
+          <div 
+            ref={messagesContainerRef}
+            className="flex-1 min-h-0 overflow-y-auto space-y-4 px-2 py-2"
+          >
+            {messages.length === 0 && !isProcessing && (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>대화를 시작해보세요. 마이크 버튼을 눌러 음성으로 말하거나 텍스트로 입력할 수 있습니다.</p>
+              </div>
+            )}
+            
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[75%] rounded-2xl px-5 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/80 text-foreground'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                </div>
+              </div>
+            ))}
+            
+            {isProcessing && (
+              <div className="flex justify-start">
+                <div className="bg-muted/80 rounded-2xl px-5 py-3">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">처리 중...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
           </div>
 
-          {/* 대화 창 */}
-          <Card className="p-6 mb-6">
-            <div 
-              ref={messagesContainerRef}
-              className="space-y-4 max-h-[500px] overflow-y-auto mb-6"
-            >
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-foreground'
-                    }`}
+          {/* 입력 영역 - 고정 (항상 하단에 표시) */}
+          <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-4 mt-2">
+            {/* 주문 완료 버튼 (pendingOrderData가 있을 때만 표시) */}
+            {pendingOrderData ? (
+              <div className="w-full">
+                <div className="text-center mb-4">
+                  <p className="font-semibold text-lg mb-1">주문 정보가 모두 준비되었습니다</p>
+                  <p className="text-sm text-muted-foreground">주문을 확정하시겠습니까?</p>
+                </div>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 max-w-[200px]"
+                    onClick={() => {
+                      setPendingOrderData(null)
+                      setMessages(prev => [...prev, {
+                        role: 'user',
+                        content: '주문을 수정하고 싶어요'
+                      }])
+                      processChatMessage('주문을 수정하고 싶어요')
+                    }}
+                    disabled={isProcessing}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                  </div>
-                </div>
-              ))}
-              
-              {isProcessing && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-3">
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>처리 중...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* 주문 완료 버튼 (모든 데이터가 충족되었을 때만 표시) */}
-              {pendingOrderData && (
-                <div className="flex justify-center mt-4">
-                  <Card className="p-4 bg-primary/10 border-primary/20">
-                    <div className="text-center mb-4">
-                      <p className="font-semibold text-lg mb-2">주문 정보가 모두 준비되었습니다</p>
-                      <p className="text-sm text-muted-foreground">주문을 확정하시겠습니까?</p>
-                    </div>
-                    <div className="flex gap-3 justify-center">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setPendingOrderData(null)
-                          setMessages(prev => [...prev, {
-                            role: 'user',
-                            content: '주문을 수정하고 싶어요'
-                          }])
-                          processChatMessage('주문을 수정하고 싶어요')
-                        }}
-                        disabled={isProcessing}
-                      >
-                        다시 주문하기
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          if (pendingOrderData) {
-                            await handleOrderComplete(pendingOrderData)
-                            setPendingOrderData(null)
-                          }
-                        }}
-                        disabled={isProcessing}
-                      >
-                        주문 확정
-                      </Button>
-                    </div>
-                  </Card>
-                </div>
-              )}
-            </div>
-
-            {/* 입력 영역 */}
-            <div className="border-t pt-4">
-              <div className="flex items-center space-x-4">
-                {/* 음성 입력 */}
-                <Button
-                  size="lg"
-                  variant={isRecording ? "destructive" : "default"}
-                  className="rounded-full w-14 h-14"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isProcessing || !sessionId || pendingOrderData}
-                >
-                  {isRecording ? (
-                    <MicOff className="w-6 h-6" />
-                  ) : (
-                    <Mic className="w-6 h-6" />
-                  )}
-                </Button>
-
-                {/* 텍스트 입력 */}
-                <div className="flex-1 flex space-x-2">
-                  <input
-                    type="text"
-                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="또는 여기에 입력하세요..."
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !isProcessing && !pendingOrderData) {
-                        sendTextMessage()
+                    다시 주문하기
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="flex-1 max-w-[200px]"
+                    onClick={async () => {
+                      if (pendingOrderData) {
+                        await handleOrderComplete(pendingOrderData)
+                        setPendingOrderData(null)
                       }
                     }}
-                    disabled={isProcessing || !sessionId || pendingOrderData}
-                  />
-                  <Button
-                    onClick={sendTextMessage}
-                    disabled={isProcessing || !textInput.trim() || !sessionId || pendingOrderData}
+                    disabled={isProcessing}
                   >
-                    <SendHorizontal className="w-4 h-4" />
+                    주문 확정
                   </Button>
                 </div>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center space-x-3">
+                  {/* 음성 입력 */}
+                  <Button
+                    size="lg"
+                    variant={isRecording ? "destructive" : "default"}
+                    className="rounded-full w-12 h-12 shrink-0"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isProcessing || !sessionId}
+                  >
+                    {isRecording ? (
+                      <MicOff className="w-5 h-5" />
+                    ) : (
+                      <Mic className="w-5 h-5" />
+                    )}
+                  </Button>
 
-              {isRecording && (
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-red-600 animate-pulse">🔴 녹음 중...</p>
+                  {/* 텍스트 입력 */}
+                  <div className="flex-1 flex items-center space-x-2 bg-muted/50 rounded-full px-4 py-2 border border-border">
+                    <input
+                      type="text"
+                      className="flex-1 bg-transparent focus:outline-none text-sm"
+                      placeholder="메시지를 입력하세요..."
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !isProcessing) {
+                          sendTextMessage()
+                        }
+                      }}
+                      disabled={isProcessing || !sessionId}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-full w-8 h-8 p-0"
+                      onClick={sendTextMessage}
+                      disabled={isProcessing || !textInput.trim() || !sessionId}
+                    >
+                      <SendHorizontal className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </div>
-          </Card>
 
-          {/* 안내 메시지 */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <h3 className="font-semibold mb-2">💡 사용 방법</h3>
-            <ul className="text-sm space-y-1 text-muted-foreground">
-              <li>• 마이크 버튼을 눌러 음성으로 말하거나, 텍스트로 입력할 수 있습니다</li>
-              <li>• AI와 자연스럽게 대화하며 디너를 선택하세요</li>
-              <li>• 주문이 완료되면 자동으로 주문이 생성되고 성공 페이지로 이동합니다</li>
-              <li>• 테스트 결제 정보와 기본 배송지가 자동으로 설정됩니다</li>
-            </ul>
-          </Card>
+                {isRecording && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm text-red-600 animate-pulse font-medium">🔴 녹음 중...</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
       <Footer />

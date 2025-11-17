@@ -11,24 +11,15 @@ import Footer from "@/components/common/footer"
 import { menuAPI } from "@/lib/services/menu.service"
 import { useAuth } from "@/context/AuthContext"
 
-// 아이콘 매핑
-const getDinnerIcon = (name) => {
-  const iconMap = {
-    "Valentine Dinner": "💝",
-    "French Dinner": "🇫🇷",
-    "English Dinner": "🇬🇧",
-    "Champagne Feast": "🍾",
+// 이미지 매핑
+const getDinnerImage = (name) => {
+  const imageMap = {
+    "Valentine Dinner": "/images/valentine.png",
+    "French Dinner": "/images/french.png",
+    "English Dinner": "/images/english.png",
+    "Champagne Feast": "/images/champagne.png",
   }
-  return iconMap[name] || "🍽️"
-}
-
-const getStyleIcon = (name) => {
-  const iconMap = {
-    "simple": "🍽️",
-    "grand": "✨",
-    "deluxe": "💎",
-  }
-  return iconMap[name] || "🍽️"
+  return imageMap[name] || "/images/valentine.png"
 }
 
 export default function DinnerDetailPage() {
@@ -80,7 +71,7 @@ export default function DinnerDetailPage() {
         name: dinnerData.name,
         description: dinnerData.description || "",
         basePrice: Number(dinnerData.basePrice || 0),
-        icon: getDinnerIcon(dinnerData.name),
+        image: getDinnerImage(dinnerData.name),
         availableStyles: dinnerData.availableStyles || ["simple", "grand", "deluxe"],
       }
 
@@ -94,7 +85,6 @@ export default function DinnerDetailPage() {
         name: style.name,
         description: style.details || "",
         priceModifier: Number(style.priceModifier || 0),
-        icon: getStyleIcon(style.name.toLowerCase()),
       }))
       setStyles(formattedStyles)
     } catch (err) {
@@ -163,7 +153,13 @@ export default function DinnerDetailPage() {
           {/* 디너 정보 */}
           <Card className="p-8 mb-8">
             <div className="flex items-start gap-6">
-              <div className="text-6xl">{dinner.icon}</div>
+              <div className="w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
+                <img 
+                  src={dinner.image} 
+                  alt={dinner.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2">{dinner.name}</h1>
                 {dinner.description && (() => {
@@ -191,7 +187,7 @@ export default function DinnerDetailPage() {
               원하시는 서빙 스타일을 선택해주세요
               {dinnerId === "champagne" && (
                 <span className="text-primary font-medium ml-2">
-                  ⭐ 샴페인 축제 디너는 그랜드/디럭스 스타일만 가능합니다
+                  샴페인 축제 디너는 그랜드/디럭스 스타일만 가능합니다
                 </span>
               )}
             </p>
@@ -208,14 +204,13 @@ export default function DinnerDetailPage() {
                     className={`p-6 cursor-pointer transition-all ${
                       !isAvailable
                         ? "opacity-40 cursor-not-allowed"
-                        : isSelected
+                        :                       isSelected
                           ? "border-2 border-primary shadow-lg"
                           : "hover:shadow-md"
                     }`}
                     onClick={() => isAvailable && handleStyleSelect(style.id)}
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <span className="text-4xl">{style.icon}</span>
                       {isSelected && (
                         <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
                           <Check className="w-4 h-4 text-white" />

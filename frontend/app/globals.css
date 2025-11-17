@@ -74,8 +74,32 @@
   --sidebar-ring: oklch(0.5 0.02 60);
 }
 
+@font-face {
+  font-family: "LINESeedKR";
+  src: url("/fonts/LINESeedKR-Rg.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LINESeedKR";
+  src: url("/fonts/LINESeedKR-Th.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LINESeedKR";
+  src: url("/fonts/LINESeedKR-Bd.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
-  --font-mono: "Noto Sans KR", "Courier New", monospace;
+  --font-mono: "LINESeedKR", "Courier New", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -120,9 +144,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "LINESeedKR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   .font-serif {
-    font-family: var(--font-display), "Playfair Display", Georgia, serif;
+    font-family: "LINESeedKR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 }
