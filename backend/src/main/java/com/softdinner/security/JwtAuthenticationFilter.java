@@ -7,6 +7,7 @@ import lombok.extern.slf4j.*;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.*;
+import org.springframework.security.core.authority.*;
 import org.springframework.security.core.context.*;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.*;
@@ -25,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final WebClient supabaseWebClient;
     private final String supabaseUrl;
     private final String supabaseAnonKey;
+    private final String supabaseServiceRoleKey;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
@@ -46,11 +48,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userData != null) {
                 String userId = (String) userData.get("id");
                 
+                // Get user role from database
+                List<GrantedAuthority> authorities = new ArrayList<>();
+                try {
+                    Map<String, Object> userInfo = getUserFromDatabase(userId);
+                    if (userInfo != null) {
+                        String role = (String) userInfo.get("role");
+                        if (role != null) {
+                            // Spring Security expects roles to start with ROLE_
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+                            log.debug("User {} has role: {}", userId, role);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to fetch user role for {}: {}", userId, e.getMessage());
+                }
+                
                 // Create authentication
                 UserDetails userDetails = User.builder()
                         .username(userId)
                         .password("")
-                        .authorities(new ArrayList<>())
+                        .authorities(authorities)
                         .build();
                 
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -92,6 +110,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return null;
         } catch (Exception e) {
             log.warn("Error verifying token with Supabase: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private Map<String, Object> getUserFromDatabase(String userId) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object>[] result = supabaseWebClient.get()
+                    .uri(supabaseUrl + "/rest/v1/users?id=eq." + userId)
+                    .header("Authorization", "Bearer " + supabaseServiceRoleKey)
+                    .header("apikey", supabaseServiceRoleKey)
+                    .retrieve()
+                    .bodyToMono(Map[].class)
+                    .block();
+            
+            return result != null && result.length > 0 ? result[0] : null;
+        } catch (Exception e) {
+            log.warn("Error fetching user from database: {}", e.getMessage());
             return null;
         }
     }

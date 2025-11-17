@@ -205,29 +205,35 @@ export default function StaffIngredientsPage() {
               </div>
             </Card>
 
-            {/* 최근 입고 기록 */}
+            {/* 최근 입출고 기록 */}
             <Card className="p-6 mt-6">
-              <h3 className="text-lg font-bold mb-4">최근 입고 기록</h3>
+              <h3 className="text-lg font-bold mb-4">최근 입출고 기록</h3>
               <div className="space-y-3">
                 {logs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">입고 기록이 없습니다</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">입출고 기록이 없습니다</p>
                 ) : (
-                  logs.slice(0, 10).map((log) => (
-                    <div key={log.id} className="flex items-center justify-between text-sm border-b pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{getIngredientIcon(log.ingredientName || "")}</span>
-                        <span>{log.ingredientName || "알 수 없음"}</span>
+                  logs.slice(0, 10).map((log) => {
+                    const qty = Number(log.quantity)
+                    const action = (log.action || '').toLowerCase()
+                    const isOut = action === 'out'
+                    const isIn = action === 'in'
+                    return (
+                      <div key={log.id} className="flex items-center justify-between text-sm border-b pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{getIngredientIcon(log.ingredientName || "")}</span>
+                          <span>{log.ingredientName || "알 수 없음"}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-medium ${isOut ? 'text-red-600' : 'text-green-600'}`}>
+                            {isOut ? '-' : '+'}{qty.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimestamp(log.createdAt || log.created_at)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium text-green-600">
-                          +{Number(log.quantity).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTimestamp(log.createdAt || log.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </Card>

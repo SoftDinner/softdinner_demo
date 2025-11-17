@@ -35,6 +35,7 @@ export default function StaffOrdersPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
+      console.log("주문 내역 로드 시작...")
       const ordersData = await orderService.getAllOrders()
       console.log("모든 주문 내역 API 응답:", ordersData)
       
@@ -223,6 +224,12 @@ export default function StaffOrdersPage() {
       loadMenuItemNames()
     } catch (error) {
       console.error("주문 내역 조회 실패:", error)
+      console.error("에러 상세:", error.message)
+      console.error("에러 스택:", error.stack)
+      
+      // 사용자에게 에러 알림
+      alert(`주문 내역을 불러오는데 실패했습니다.\n${error.message || '알 수 없는 오류'}`)
+      
       setOrders([])
       setGroupedOrders({})
       setCustomers([])
@@ -300,6 +307,19 @@ export default function StaffOrdersPage() {
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
+    } catch (e) {
+      return "알 수 없음"
+    }
+  }
+
+  const formatDateOnly = (timestamp) => {
+    if (!timestamp) return "알 수 없음"
+    try {
+      const date = new Date(timestamp)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
     } catch (e) {
       return "알 수 없음"
     }
@@ -405,7 +425,7 @@ export default function StaffOrdersPage() {
                               {order.delivery_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="w-4 h-4" />
-                                  배달: {formatTimestamp(order.delivery_date)}
+                                  배달: {formatDateOnly(order.delivery_date)}
                                 </span>
                               )}
                               {order.delivery_address && (

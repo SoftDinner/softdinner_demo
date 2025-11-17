@@ -28,9 +28,21 @@ export async function apiRequest(endpoint, options = {}) {
   try {
     const response = await fetch(url, config)
     
+    console.log(`API 요청: ${options.method || 'GET'} ${url}, 상태: ${response.status}`)
+    
     // Check if response is ok before trying to parse JSON
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
+      
+      // 403 Forbidden인 경우 권한 관련 메시지
+      if (response.status === 403) {
+        errorMessage = '접근 권한이 없습니다. 직원 계정으로 로그인했는지 확인하세요.'
+      }
+      // 401 Unauthorized인 경우 인증 관련 메시지
+      else if (response.status === 401) {
+        errorMessage = '인증이 필요합니다. 다시 로그인해주세요.'
+      }
+      
       try {
         const errorData = await response.json()
         errorMessage = errorData.message || errorMessage

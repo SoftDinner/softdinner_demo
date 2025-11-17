@@ -201,6 +201,14 @@ public class AuthService {
             userData.put("loyalty_tier", "bronze");
             userData.put("total_orders", 0);
             userData.put("total_spent", 0.0);
+            
+            // 결제 정보 저장 (고객인 경우)
+            if ("customer".equals(request.getRole()) && request.getPaymentInfo() != null) {
+                userData.put("card_number", request.getPaymentInfo().getCardNumber());
+                userData.put("card_expiry", request.getPaymentInfo().getExpiryDate());
+                userData.put("card_cvc", request.getPaymentInfo().getCvc());
+                log.info("Saving payment info for customer: {}", userId);
+            }
 
             // Create user record in users table (returns array)
             @SuppressWarnings("unchecked")
@@ -400,6 +408,9 @@ public class AuthService {
                     .loyaltyTier((String) user.get("loyalty_tier"))
                     .totalOrders((Integer) user.get("total_orders"))
                     .totalSpent(((Number) user.get("total_spent")).doubleValue())
+                    .cardNumber((String) user.get("card_number"))
+                    .cardExpiry((String) user.get("card_expiry"))
+                    .cardCvc((String) user.get("card_cvc"))
                     .build();
 
         } catch (Exception e) {
