@@ -256,57 +256,26 @@ export default function OrderSuccessPage() {
         }
         
         // 커스터마이징 가격 계산
-        console.log("커스터마이징 가격 계산 시작:", {
-          customizationsKeys: Object.keys(customizations),
-          customizations: customizations,
-          menuItemsIds: menuItems.map(m => m.id),
-          menuItemsCount: menuItems.length
-        })
-        
         if (menuItems && menuItems.length > 0 && Object.keys(customizations).length > 0) {
           Object.entries(customizations).forEach(([itemId, qty]) => {
-            console.log(`아이템 ID 찾기: ${itemId}, 수량: ${qty}`)
             const item = menuItems.find(m => m.id === itemId)
             if (item) {
               const defaultQty = item.defaultQuantity ?? 0
               const quantityDiff = Number(qty) - defaultQty
-              console.log(`아이템 찾음: ${item.name}, 기본: ${defaultQty}, 현재: ${qty}, 차이: ${quantityDiff}, 단가: ${item.pricePerUnit}`)
-              if (quantityDiff !== 0 && item.pricePerUnit) {
-                const itemPrice = quantityDiff * Number(item.pricePerUnit)
+              // additionalPrice 우선 사용 (dashboard와 동일한 로직)
+              const pricePerUnit = item.additionalPrice || item.pricePerUnit || 0
+              if (quantityDiff !== 0 && pricePerUnit) {
+                const itemPrice = quantityDiff * Number(pricePerUnit)
                 customizationPrice += itemPrice
-                console.log(`커스터마이징 가격 계산: ${item.name} ${quantityDiff > 0 ? '+' : ''}${quantityDiff} × ${item.pricePerUnit} = ${itemPrice}`)
-              } else {
-                console.log(`가격 계산 스킵: quantityDiff=${quantityDiff}, pricePerUnit=${item.pricePerUnit}`)
               }
-            } else {
-              console.warn(`아이템을 찾을 수 없음: ${itemId}`)
             }
           })
-        } else {
-          console.warn("메뉴 항목 또는 커스터마이징이 없음:", {
-            menuItemsLength: menuItems?.length || 0,
-            customizationsLength: Object.keys(customizations).length
-          })
         }
-        console.log("최종 커스터마이징 가격:", customizationPrice)
       } catch (error) {
         console.error("가격 정보 계산 실패:", error)
         // 계산 실패 시 대략적인 값 사용
         basePrice = totalPriceValue - discountValue
       }
-
-        console.log("주문 완료 페이지 - 최종 가격 정보:", {
-        basePrice,
-        stylePrice,
-        customizationPrice,
-        subtotal: totalPriceValue,
-        discountAmount: discountValue,
-        finalPrice: finalPriceValue,
-        customizationsCount: Object.keys(customizations).length,
-        menuItemsCount: menuItems.length,
-        customizations: customizations,
-        menuItems: menuItems.map(m => ({ id: m.id, name: m.name, pricePerUnit: m.pricePerUnit, defaultQuantity: m.defaultQuantity }))
-      })
 
       setOrderData({
         orderId: order.id,

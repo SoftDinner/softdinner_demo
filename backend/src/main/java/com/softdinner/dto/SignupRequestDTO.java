@@ -23,5 +23,14 @@ public class SignupRequestDTO {
     
     @NotBlank(message = "Role is required")
     private String role; // "customer" or "staff"
+    
+    private PaymentInfo paymentInfo; // 결제 정보 (고객만)
+    
+    @Data
+    public static class PaymentInfo {
+        private String cardNumber;
+        private String expiryDate;
+        private String cvc;
+    }
 }
 

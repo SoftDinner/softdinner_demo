@@ -62,6 +62,20 @@ export default function CheckoutPage() {
       loadingRef.current = true
       loadOrderData()
       loadLoyaltyInfo()
+      
+      // 사용자 정보에서 주소와 결제 정보 자동 입력
+      if (user.address) {
+        setDeliveryAddress(user.address)
+      }
+      if (user.cardNumber) {
+        setCardNumber(user.cardNumber)
+      }
+      if (user.cardExpiry) {
+        setExpiryDate(user.cardExpiry)
+      }
+      if (user.cardCvc) {
+        setCvc(user.cardCvc)
+      }
     }
   }, [user, authLoading, router, dinnerId, styleId])
   
@@ -217,7 +231,7 @@ export default function CheckoutPage() {
         dinnerId: dinnerId,
         styleId: styleId,
         deliveryAddress: deliveryAddress,
-        deliveryDate: deliveryDate.toISOString(),
+        deliveryDate: format(deliveryDate, "yyyy-MM-dd'T'HH:mm:ss"),
         customizations: customizations || {},
         paymentInfo: {
           cardNumber: cardNumber,
@@ -297,7 +311,11 @@ export default function CheckoutPage() {
                           mode="single"
                           selected={deliveryDate}
                           onSelect={setDeliveryDate}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            return date < today
+                          }}
                           locale={ko}
                         />
                       </PopoverContent>

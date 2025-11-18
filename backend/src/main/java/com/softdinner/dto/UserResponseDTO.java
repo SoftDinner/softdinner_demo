@@ -20,5 +20,10 @@ public class UserResponseDTO {
     private Double totalSpent;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // 결제 정보 (고객만)
+    private String cardNumber;
+    private String cardExpiry;
+    private String cardCvc;
 }
 

@@ -22,6 +22,9 @@ export default function AuthPage() {
   const [address, setAddress] = useState("")
   const [role, setRole] = useState("customer")
   const [staffKey, setStaffKey] = useState("")
+  const [cardNumber, setCardNumber] = useState("")
+  const [expiryDate, setExpiryDate] = useState("")
+  const [cvc, setCvc] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -39,14 +42,25 @@ export default function AuthPage() {
       }
 
       // Spring Boot API 회원가입
-      const response = await authAPI.signup({
+      const signupData = {
         email,
         password,
         fullName,
         phone,
-        address,
         role
-      })
+      }
+
+      // 고객인 경우 주소와 결제 정보 추가
+      if (role === "customer") {
+        signupData.address = address
+        signupData.paymentInfo = {
+          cardNumber,
+          expiryDate,
+          cvc
+        }
+      }
+
+      const response = await authAPI.signup(signupData)
 
       // 회원가입 성공 - 토큰이 없으므로 로그인 페이지로 전환
       alert(response.message || "회원가입이 완료되었습니다! 로그인해주세요.")
@@ -57,6 +71,9 @@ export default function AuthPage() {
       setPhone("")
       setAddress("")
       setStaffKey("")
+      setCardNumber("")
+      setExpiryDate("")
+      setCvc("")
     } catch (err) {
       setError(err.message || "회원가입 중 오류가 발생했습니다.")
     } finally {
@@ -162,18 +179,6 @@ export default function AuthPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">주소</Label>
-                    <Input
-                      id="address"
-                      type="text"
-                      placeholder="서울시 강남구..."
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      required={!isLogin}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="role">역할</Label>
                     <select
                       id="role"
@@ -190,9 +195,81 @@ export default function AuthPage() {
                     </select>
                   </div>
 
+                  {role === "customer" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="address">주소</Label>
+                        <Input
+                          id="address"
+                          type="text"
+                          placeholder="서울시 강남구..."
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          required={role === "customer"}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cardNumber">카드 번호</Label>
+                        <Input
+                          id="cardNumber"
+                          placeholder="1234 5678 9012 3456"
+                          value={cardNumber}
+                          onChange={(e) => {
+                            // 숫자만 추출
+                            const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '')
+                            // 4자리마다 공백 추가
+                            const formatted = value.match(/.{1,4}/g)?.join(' ') || value
+                            setCardNumber(formatted)
+                          }}
+                          maxLength={19}
+                          required={role === "customer"}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="expiry">만료일 (MM/YY)</Label>
+                          <Input
+                            id="expiry"
+                            placeholder="MM/YY"
+                            value={expiryDate}
+                            onChange={(e) => {
+                              // 숫자만 추출
+                              const value = e.target.value.replace(/\D/g, '')
+                              // MM/YY 형식으로 포맷팅
+                              let formatted = value
+                              if (value.length >= 2) {
+                                formatted = value.substring(0, 2) + '/' + value.substring(2, 4)
+                              }
+                              setExpiryDate(formatted)
+                            }}
+                            maxLength={5}
+                            required={role === "customer"}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="cvc">CVC</Label>
+                          <Input
+                            id="cvc"
+                            placeholder="123"
+                            value={cvc}
+                            onChange={(e) => {
+                              // 숫자만 입력, 최대 3자리
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 3)
+                              setCvc(value)
+                            }}
+                            maxLength={3}
+                            required={role === "customer"}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   {role === "staff" && (
                     <div className="space-y-2">
-                      <Label htmlFor="staffKey">직원 키</Label>
+                      <Label htmlFor="staffKey">직원 키 *</Label>
                       <Input
                         id="staffKey"
                         type="password"

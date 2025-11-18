@@ -5,8 +5,12 @@ export async function apiRequest(endpoint, options = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
 
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
+  }
+
+  // multipart/form-data가 아닌 경우에만 Content-Type 설정
+  if (!options.isMultipart) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (token) {
@@ -17,13 +21,28 @@ export async function apiRequest(endpoint, options = {}) {
     ...options,
     headers,
   }
+  
+  // isMultipart 플래그 제거 (fetch에 전달하지 않음)
+  delete config.isMultipart
 
   try {
     const response = await fetch(url, config)
     
+    console.log(`API 요청: ${options.method || 'GET'} ${url}, 상태: ${response.status}`)
+    
     // Check if response is ok before trying to parse JSON
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
+      
+      // 403 Forbidden인 경우 권한 관련 메시지
+      if (response.status === 403) {
+        errorMessage = '접근 권한이 없습니다. 직원 계정으로 로그인했는지 확인하세요.'
+      }
+      // 401 Unauthorized인 경우 인증 관련 메시지
+      else if (response.status === 401) {
+        errorMessage = '인증이 필요합니다. 다시 로그인해주세요.'
+      }
+      
       try {
         const errorData = await response.json()
         errorMessage = errorData.message || errorMessage
@@ -37,9 +56,14 @@ export async function apiRequest(endpoint, options = {}) {
     const data = await response.json()
     return data
   } catch (error) {
-    console.error('API request error:', error)
-    console.error('Request URL:', url)
-    console.error('Request config:', config)
+    // 음성 인식 관련 에러는 조용히 처리 (콘솔 에러 출력 안 함)
+    const isVoiceTranscribeError = endpoint.includes('/voice-order/transcribe')
+    
+    if (!isVoiceTranscribeError) {
+      console.error('API request error:', error)
+      console.error('Request URL:', url)
+      console.error('Request config:', config)
+    }
     
     // More specific error messages
     if (error.message === 'Failed to fetch') {
