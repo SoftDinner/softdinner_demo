@@ -10,6 +10,16 @@ import { useAuth } from "@/context/AuthContext"
 import { apiRequest } from "@/lib/api"
 import { orderService } from "@/lib/services/order.service"
 
+const normalizeCardNumber = (value) => {
+  if (!value) return ''
+  return value.replace(/[^0-9]/g, '')
+}
+
+const normalizeText = (value) => {
+  if (!value || typeof value !== 'string') return ''
+  return value.trim()
+}
+
 export default function VoiceOrderPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
@@ -297,26 +307,36 @@ export default function VoiceOrderPage() {
         ? new Date(orderData.deliveryDate).toISOString()
         : new Date(Date.now() + 86400000).toISOString() // 기본: 내일
       
-      // 사용자 정보 확인
-      if (!user || !user.address) {
-        throw new Error("주소 정보를 찾을 수 없습니다. 마이페이지에서 주소를 설정해주세요.")
+      // 배송/결제 정보 - 주문 데이터 우선, 없으면 회원 기본 정보
+      const deliveryAddressFromOrder = normalizeText(orderData.deliveryAddress)
+      const deliveryAddressFromProfile = normalizeText(user?.address)
+      const finalDeliveryAddress = deliveryAddressFromOrder || deliveryAddressFromProfile
+      
+      const finalPaymentInfo = {
+        cardNumber: normalizeCardNumber(orderData.cardNumber) || normalizeCardNumber(user?.cardNumber),
+        expiryDate: normalizeText(orderData.cardExpiry) || normalizeText(user?.cardExpiry),
+        cvc: normalizeText(orderData.cardCvc) || normalizeText(user?.cardCvc),
       }
       
-      if (!user.cardNumber || !user.cardExpiry || !user.cardCvc) {
-        throw new Error("결제 정보를 찾을 수 없습니다. 마이페이지에서 결제 정보를 설정해주세요.")
+      if (!finalDeliveryAddress) {
+        throw new Error("주소 정보를 찾을 수 없습니다. 고객에게 다시 확인해주세요.")
+      }
+      
+      if (!finalPaymentInfo.cardNumber || !finalPaymentInfo.expiryDate || !finalPaymentInfo.cvc) {
+        throw new Error("결제 정보를 찾을 수 없습니다. 고객에게 다시 확인해주세요.")
       }
 
       // 주문 생성 요청 데이터
       const createOrderRequest = {
         dinnerId: orderData.dinnerId,
         styleId: orderData.styleId,
-        deliveryAddress: user.address,
+        deliveryAddress: finalDeliveryAddress,
         deliveryDate: deliveryDate,
         customizations: customizations,
         paymentInfo: {
-          cardNumber: user.cardNumber,
-          expiryDate: user.cardExpiry,
-          cvc: user.cardCvc
+          cardNumber: finalPaymentInfo.cardNumber,
+          expiryDate: finalPaymentInfo.expiryDate,
+          cvc: finalPaymentInfo.cvc
         }
       }
       

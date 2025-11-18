@@ -37,11 +37,12 @@ public class VoiceOrderService {
     /**
      * 음성 주문 세션 시작
      */
-    public VoiceChatResponseDTO startSession(String userName) {
+    public VoiceChatResponseDTO startSession(UserResponseDTO user) {
         String sessionId = UUID.randomUUID().toString();
+        String userName = resolveUserName(user);
         
         // 시스템 프롬프트 생성
-        String systemPrompt = createSystemPrompt(userName);
+        String systemPrompt = createSystemPrompt(user);
         
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(createMessage("system", systemPrompt));
@@ -66,14 +67,15 @@ public class VoiceOrderService {
     /**
      * 대화 처리
      */
-    public VoiceChatResponseDTO processConversation(String sessionId, String userMessage, String userName) {
-        logger.info("💬 대화 처리 시작 - 세션: {}, 메시지: {}", sessionId, userMessage);
+    public VoiceChatResponseDTO processConversation(String sessionId, String userMessage, UserResponseDTO user) {
+        String userName = resolveUserName(user);
+        logger.info("💬 대화 처리 시작 - 사용자: {}, 세션: {}, 메시지: {}", userName, sessionId, userMessage);
         
         // 세션 확인
         List<Map<String, String>> messages = sessionConversations.get(sessionId);
         if (messages == null) {
             // 세션이 없으면 새로 시작
-            return startSession(userName);
+            return startSession(user);
         }
         
         // 사용자 메시지 추가
@@ -128,7 +130,56 @@ public class VoiceOrderService {
         return message;
     }
 
-    private String createSystemPrompt(String userName) {
+    private String resolveUserName(UserResponseDTO user) {
+        if (user == null) {
+            return "고객";
+        }
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        return "고객";
+    }
+
+    private String formatAddress(UserResponseDTO user) {
+        if (user == null || user.getAddress() == null || user.getAddress().isBlank()) {
+            return "등록된 주소가 없습니다. 고객에게 새 주소를 요청하세요.";
+        }
+        return user.getAddress();
+    }
+
+    private String formatMaskedCard(UserResponseDTO user) {
+        if (user == null || user.getCardNumber() == null || user.getCardNumber().isBlank()) {
+            return "등록된 결제 카드가 없습니다. 고객에게 새 결제 정보를 요청하세요.";
+        }
+        return maskCardNumber(user.getCardNumber());
+    }
+
+    private String maskCardNumber(String rawCardNumber) {
+        String digitsOnly = rawCardNumber.replaceAll("[^0-9]", "");
+        if (digitsOnly.isEmpty()) {
+            return "등록된 결제 카드가 없습니다. 고객에게 새 결제 정보를 요청하세요.";
+        }
+
+        int visibleLength = Math.min(8, digitsOnly.length());
+        StringBuilder masked = new StringBuilder();
+
+        for (int i = 0; i < digitsOnly.length(); i++) {
+            if (i > 0 && i % 4 == 0) {
+                masked.append(' ');
+            }
+
+            if (i < visibleLength) {
+                masked.append(digitsOnly.charAt(i));
+            } else {
+                masked.append('.');
+            }
+        }
+
+        return masked.toString();
+    }
+
+    private String createSystemPrompt(UserResponseDTO user) {
+        String userName = resolveUserName(user);
         // 메뉴 정보 가져오기
         List<DinnerDTO> dinners = menuService.findAllDinners();
         List<StyleDTO> styles = menuService.findAllStyles();
@@ -136,6 +187,8 @@ public class VoiceOrderService {
         for (DinnerDTO dinner : dinners) {
             dinnerMenuItems.put(dinner.getId(), menuService.findMenuItemsByDinnerId(dinner.getId()));
         }
+        String defaultAddress = formatAddress(user);
+        String maskedCard = formatMaskedCard(user);
         
         StringBuilder prompt = new StringBuilder();
         prompt.append("당신은 고급 디너 배달 서비스 'SoftDinner'의 AI 주문 도우미입니다.\n\n");
@@ -148,6 +201,12 @@ public class VoiceOrderService {
         prompt.append("    \"dinnerName\": \"디너명\",\n");
         prompt.append("    \"styleName\": \"스타일명\",\n");
         prompt.append("    \"deliveryDate\": \"YYYY-MM-DD\",\n");
+        prompt.append("    \"deliveryAddress\": \"사용할 배송지\",\n");
+        prompt.append("    \"paymentInfo\": {\n");
+        prompt.append("      \"cardNumber\": \"고객이 말한 전체 카드번호를 그대로 기록 (공백 허용, 마스킹 금지)\",\n");
+        prompt.append("      \"cardExpiry\": \"MM/YY\",\n");
+        prompt.append("      \"cardCvc\": \"3자리\"\n");
+        prompt.append("    },\n");
         prompt.append("    \"customizations\": {\"메뉴아이템명\": 수량}\n");
         prompt.append("  }\n");
         prompt.append("  [/ORDER_COMPLETE]\n\n");
@@ -203,6 +262,18 @@ public class VoiceOrderService {
         }
         prompt.append("\n");
 
+        prompt.append("**회원 기본 배송/결제 정보:**\n");
+        prompt.append("- 배송지: ").append(defaultAddress).append("\n");
+        prompt.append("- 결제 카드: ").append(maskedCard).append("\n\n");
+
+        prompt.append("**주문 완료 전 확인 절차:**\n");
+        prompt.append("1. 주문 완료 직전에 반드시 \"결제랑 주소는 기본 회원 정보로 하면 될까요?\"라고 고객에게 물어보세요.\n");
+        prompt.append("2. 위 질문과 함께 아래 정보를 그대로 안내하세요:\n");
+        prompt.append("   - 배송지: ").append(defaultAddress).append("\n");
+        prompt.append("   - 결제 카드: ").append(maskedCard).append("\n");
+        prompt.append("3. 고객이 수정하거나 다른 정보를 원하면, 새로운 주소/결제 정보를 다시 확인한 뒤 ORDER_COMPLETE 데이터를 업데이트하세요.\n");
+        prompt.append("4. 고객 동의 없이 ORDER_COMPLETE를 출력하지 마세요.\n\n");
+
         prompt.append("**디너별 커스터마이징 가능 항목:**\n");
         for (DinnerDTO dinner : dinners) {
             prompt.append("- ").append(dinner.getName()).append(":\n");
@@ -222,6 +293,13 @@ public class VoiceOrderService {
         prompt.append("1. customizations JSON에는 반드시 선택된 디너의 메뉴 아이템만 포함해야 합니다.\n");
         prompt.append("2. 다른 디너 전용 항목(예: French Dinner에서 샴페인)을 요청받으면, 해당 디너에서는 제공되지 않는다고 안내하고 필요한 경우 해당 항목을 제공하는 디너로 변경해야 한다고 설명하세요.\n");
         prompt.append("3. 없는 항목을 임의로 추가하거나 가격을 추정하지 말고, 실제 옵션만 제시하세요.\n\n");
+
+        prompt.append("**배송/결제 정보 규칙:**\n");
+        prompt.append("1. 배송지와 결제 정보는 고객이 선택하거나 새로 제공한 값으로 확정하고, ORDER_COMPLETE JSON의 deliveryAddress 및 paymentInfo에 반드시 기록하세요.\n");
+        prompt.append("2. 고객이 \"기본 회원 정보\"를 사용하겠다고 하면 위에 제공된 기본 배송지/카드 문자열을 그대로 JSON에 입력하세요.\n");
+        prompt.append("3. 고객이 새 주소나 새 카드를 제공하면, 대화 중에는 민감 정보를 다시 읽어주고 확인하되 ORDER_COMPLETE JSON에는 고객이 알려준 원본 문자열을 그대로 기록하세요.\n");
+        prompt.append("4. 카드번호는 공백 포함 전체 숫자를 저장해야 하며, 마스킹하거나 일부만 기록하면 안 됩니다.\n");
+        prompt.append("5. 어떤 정보도 알 수 없으면 ORDER_COMPLETE를 출력하지 말고 필요한 정보를 다시 질문하세요.\n\n");
         
         prompt.append("**중요: 커스터마이징 및 가격 계산 규칙:**\n");
         prompt.append("1. 각 디너는 위에 표시된 '기본 구성'을 포함하고 있으며, 기본 가격에 이미 반영되어 있습니다.\n");
@@ -295,6 +373,16 @@ public class VoiceOrderService {
         String dinnerName = json.has("dinnerName") ? json.get("dinnerName").asText() : null;
         String styleName = json.has("styleName") ? json.get("styleName").asText() : null;
         String deliveryDate = json.has("deliveryDate") ? json.get("deliveryDate").asText() : null;
+        String deliveryAddress = json.has("deliveryAddress") ? json.get("deliveryAddress").asText() : null;
+        String cardNumber = null;
+        String cardExpiry = null;
+        String cardCvc = null;
+        if (json.has("paymentInfo") && json.get("paymentInfo").isObject()) {
+            JsonNode paymentInfo = json.get("paymentInfo");
+            cardNumber = paymentInfo.has("cardNumber") ? paymentInfo.get("cardNumber").asText() : null;
+            cardExpiry = paymentInfo.has("cardExpiry") ? paymentInfo.get("cardExpiry").asText() : null;
+            cardCvc = paymentInfo.has("cardCvc") ? paymentInfo.get("cardCvc").asText() : null;
+        }
         
         logger.info("🔍 JSON에서 추출: dinnerName={}, styleName={}, deliveryDate={}", 
                 dinnerName, styleName, deliveryDate);
@@ -395,6 +483,10 @@ public class VoiceOrderService {
                 .styleId(styleId)
                 .styleName(styleName)
                 .deliveryDate(deliveryDate)
+                .deliveryAddress(deliveryAddress)
+                .cardNumber(cardNumber)
+                .cardExpiry(cardExpiry)
+                .cardCvc(cardCvc)
                 .customizations(customizations)
                 .build();
     }
