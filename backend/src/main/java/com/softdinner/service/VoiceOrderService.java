@@ -132,6 +132,10 @@ public class VoiceOrderService {
         // 메뉴 정보 가져오기
         List<DinnerDTO> dinners = menuService.findAllDinners();
         List<StyleDTO> styles = menuService.findAllStyles();
+        Map<String, List<MenuItemDTO>> dinnerMenuItems = new HashMap<>();
+        for (DinnerDTO dinner : dinners) {
+            dinnerMenuItems.put(dinner.getId(), menuService.findMenuItemsByDinnerId(dinner.getId()));
+        }
         
         StringBuilder prompt = new StringBuilder();
         prompt.append("당신은 고급 디너 배달 서비스 'SoftDinner'의 AI 주문 도우미입니다.\n\n");
@@ -171,7 +175,7 @@ public class VoiceOrderService {
             prompt.append("  설명: ").append(accurateDescription).append("\n");
             
             // 기본 구성 메뉴 아이템 표시
-            List<MenuItemDTO> menuItems = menuService.findMenuItemsByDinnerId(dinner.getId());
+            List<MenuItemDTO> menuItems = dinnerMenuItems.getOrDefault(dinner.getId(), Collections.emptyList());
             if (!menuItems.isEmpty()) {
                 prompt.append("  기본 구성: ");
                 for (int i = 0; i < menuItems.size(); i++) {
@@ -198,6 +202,26 @@ public class VoiceOrderService {
             }
         }
         prompt.append("\n");
+
+        prompt.append("**디너별 커스터마이징 가능 항목:**\n");
+        for (DinnerDTO dinner : dinners) {
+            prompt.append("- ").append(dinner.getName()).append(":\n");
+            List<MenuItemDTO> menuItems = dinnerMenuItems.getOrDefault(dinner.getId(), Collections.emptyList());
+            if (menuItems.isEmpty()) {
+                prompt.append("  • 등록된 커스터마이징 항목 없음\n");
+            } else {
+                for (MenuItemDTO item : menuItems) {
+                    prompt.append("  • ").append(describeMenuItem(item)).append("\n");
+                }
+            }
+            prompt.append("  • 위 항목 외 옵션은 이 디너에서 제공되지 않으므로 절대 추가하지 말고, 고객에게 불가하다고 안내하세요.\n");
+        }
+        prompt.append("\n");
+        
+        prompt.append("**엄격한 메뉴 일치 규칙:**\n");
+        prompt.append("1. customizations JSON에는 반드시 선택된 디너의 메뉴 아이템만 포함해야 합니다.\n");
+        prompt.append("2. 다른 디너 전용 항목(예: French Dinner에서 샴페인)을 요청받으면, 해당 디너에서는 제공되지 않는다고 안내하고 필요한 경우 해당 항목을 제공하는 디너로 변경해야 한다고 설명하세요.\n");
+        prompt.append("3. 없는 항목을 임의로 추가하거나 가격을 추정하지 말고, 실제 옵션만 제시하세요.\n\n");
         
         prompt.append("**중요: 커스터마이징 및 가격 계산 규칙:**\n");
         prompt.append("1. 각 디너는 위에 표시된 '기본 구성'을 포함하고 있으며, 기본 가격에 이미 반영되어 있습니다.\n");
@@ -458,6 +482,74 @@ public class VoiceOrderService {
         mapping.put("디럭스", "deluxe");
         
         return mapping.getOrDefault(normalized, normalized);
+    }
+
+    private String describeMenuItem(MenuItemDTO item) {
+        String unit = item.getUnit() != null ? item.getUnit() : "";
+        String unitLabel = unit.isEmpty() ? "" : unit;
+        StringBuilder description = new StringBuilder();
+        description.append(item.getName());
+
+        if (item.getDefaultQuantity() != null) {
+            description.append(" - 기본 ").append(item.getDefaultQuantity()).append(unitLabel);
+        }
+
+        if (Boolean.TRUE.equals(item.getIsRequired())) {
+            description.append(", 필수");
+        } else {
+            description.append(", 선택");
+        }
+
+        if (Boolean.FALSE.equals(item.getCanRemove())) {
+            description.append(", 제거 불가");
+        } else if (Boolean.TRUE.equals(item.getCanRemove())) {
+            description.append(", 제거 가능");
+        }
+
+        if (Boolean.TRUE.equals(item.getCanIncrease()) || Boolean.TRUE.equals(item.getCanDecrease())) {
+            description.append(", 증감: ");
+            if (Boolean.TRUE.equals(item.getCanIncrease())) {
+                description.append("증가 가능");
+            }
+            if (Boolean.TRUE.equals(item.getCanIncrease()) && Boolean.TRUE.equals(item.getCanDecrease())) {
+                description.append("/");
+            }
+            if (Boolean.TRUE.equals(item.getCanDecrease())) {
+                description.append("감소 가능");
+            }
+        }
+
+        if (item.getMinQuantity() != null || item.getMaxQuantity() != null) {
+            description.append(" (");
+            if (item.getMinQuantity() != null) {
+                description.append("최소 ").append(item.getMinQuantity()).append(unitLabel);
+            }
+            if (item.getMinQuantity() != null && item.getMaxQuantity() != null) {
+                description.append(", ");
+            }
+            if (item.getMaxQuantity() != null) {
+                description.append("최대 ").append(item.getMaxQuantity()).append(unitLabel);
+            }
+            description.append(")");
+        }
+
+        Double pricePerUnit = item.getAdditionalPrice() != null && item.getAdditionalPrice() > 0
+                ? item.getAdditionalPrice()
+                : item.getBasePrice();
+        if (pricePerUnit != null && pricePerUnit > 0) {
+            description.append(", 추가 ")
+                    .append(unitLabel.isEmpty() ? "" : unitLabel)
+                    .append("당 ₩").append(formatCurrency(pricePerUnit));
+        }
+
+        return description.toString();
+    }
+
+    private String formatCurrency(Double value) {
+        if (value == null) {
+            return "0";
+        }
+        return String.format("%,.0f", value);
     }
 
     private boolean checkIfOrderComplete(String response, VoiceOrderDataDTO orderData) {
