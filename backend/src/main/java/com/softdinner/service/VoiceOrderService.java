@@ -271,8 +271,10 @@ public class VoiceOrderService {
         prompt.append("2. 위 질문과 함께 아래 정보를 그대로 안내하세요:\n");
         prompt.append("   - 배송지: ").append(defaultAddress).append("\n");
         prompt.append("   - 결제 카드: ").append(maskedCard).append("\n");
-        prompt.append("3. 고객이 수정하거나 다른 정보를 원하면, 새로운 주소/결제 정보를 다시 확인한 뒤 ORDER_COMPLETE 데이터를 업데이트하세요.\n");
-        prompt.append("4. 고객 동의 없이 ORDER_COMPLETE를 출력하지 마세요.\n\n");
+        prompt.append("3. **중요: 주문 내역을 정리할 때는 '커스터마이징' 항목에 변경된 것만 적지 말고, 해당 디너의 모든 구성 메뉴와 최종 수량을 빠짐없이 나열해 주세요.**\n");
+        prompt.append("   - 예: \"커스터마이징: 바게트빵 7개, 샴페인 3병\" (X) -> \"구성 메뉴: 스테이크 1개, 샐러드 1개, 바게트빵 7개, 샴페인 3병, 커피 1잔\" (O)\n");
+        prompt.append("4. 고객이 수정하거나 다른 정보를 원하면, 새로운 주소/결제 정보를 다시 확인한 뒤 ORDER_COMPLETE 데이터를 업데이트하세요.\n");
+        prompt.append("5. 고객 동의 없이 ORDER_COMPLETE를 출력하지 마세요.\n\n");
 
         prompt.append("**디너별 커스터마이징 가능 항목:**\n");
         for (DinnerDTO dinner : dinners) {
