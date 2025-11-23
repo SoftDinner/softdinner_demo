@@ -78,7 +78,7 @@ public class OpenAIService {
         logger.info("💬 GPT API 호출 시작 - 메시지 수: {}", messages.size());
 
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-4-turbo-preview");
+        requestBody.put("model", "gpt-4.1-mini");
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.7);
         requestBody.put("max_tokens", 1000);
@@ -109,7 +109,7 @@ public class OpenAIService {
         logger.info("💬 GPT API (with functions) 호출 시작");
 
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-4-turbo-preview");
+        requestBody.put("model", "gpt-4.1-mini");
         requestBody.put("messages", messages);
         requestBody.put("functions", functions);
         requestBody.put("function_call", "auto");
