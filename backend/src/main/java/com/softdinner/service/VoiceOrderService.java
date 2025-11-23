@@ -140,43 +140,6 @@ public class VoiceOrderService {
         return "고객";
     }
 
-    private String formatAddress(UserResponseDTO user) {
-        if (user == null || user.getAddress() == null || user.getAddress().isBlank()) {
-            return "등록된 주소가 없습니다. 고객에게 새 주소를 요청하세요.";
-        }
-        return user.getAddress();
-    }
-
-    private String formatMaskedCard(UserResponseDTO user) {
-        if (user == null || user.getCardNumber() == null || user.getCardNumber().isBlank()) {
-            return "등록된 결제 카드가 없습니다. 고객에게 새 결제 정보를 요청하세요.";
-        }
-        return maskCardNumber(user.getCardNumber());
-    }
-
-    private String maskCardNumber(String rawCardNumber) {
-        String digitsOnly = rawCardNumber.replaceAll("[^0-9]", "");
-        if (digitsOnly.isEmpty()) {
-            return "등록된 결제 카드가 없습니다. 고객에게 새 결제 정보를 요청하세요.";
-        }
-
-        int visibleLength = Math.min(8, digitsOnly.length());
-        StringBuilder masked = new StringBuilder();
-
-        for (int i = 0; i < digitsOnly.length(); i++) {
-            if (i > 0 && i % 4 == 0) {
-                masked.append(' ');
-            }
-
-            if (i < visibleLength) {
-                masked.append(digitsOnly.charAt(i));
-            } else {
-                masked.append('.');
-            }
-        }
-
-        return masked.toString();
-    }
 
     private String createSystemPrompt(UserResponseDTO user) {
         String userName = resolveUserName(user);
@@ -187,8 +150,6 @@ public class VoiceOrderService {
         for (DinnerDTO dinner : dinners) {
             dinnerMenuItems.put(dinner.getId(), menuService.findMenuItemsByDinnerId(dinner.getId()));
         }
-        String defaultAddress = formatAddress(user);
-        String maskedCard = formatMaskedCard(user);
         
         StringBuilder prompt = new StringBuilder();
         prompt.append("당신은 고급 디너 배달 서비스 'SoftDinner'의 AI 주문 도우미입니다.\n\n");
@@ -201,11 +162,11 @@ public class VoiceOrderService {
         prompt.append("    \"dinnerName\": \"디너명\",\n");
         prompt.append("    \"styleName\": \"스타일명\",\n");
         prompt.append("    \"deliveryDate\": \"YYYY-MM-DD\",\n");
-        prompt.append("    \"deliveryAddress\": \"사용할 배송지\",\n");
+        prompt.append("    \"deliveryAddress\": \"기본 주소\",\n");
         prompt.append("    \"paymentInfo\": {\n");
-        prompt.append("      \"cardNumber\": \"고객이 말한 전체 카드번호를 그대로 기록 (공백 허용, 마스킹 금지)\",\n");
-        prompt.append("      \"cardExpiry\": \"MM/YY\",\n");
-        prompt.append("      \"cardCvc\": \"3자리\"\n");
+        prompt.append("      \"cardNumber\": \"1234 5678 9012 3456\",\n");
+        prompt.append("      \"cardExpiry\": \"12/25\",\n");
+        prompt.append("      \"cardCvc\": \"123\"\n");
         prompt.append("    },\n");
         prompt.append("    \"customizations\": {\"메뉴아이템명\": 수량}\n");
         prompt.append("  }\n");
@@ -216,26 +177,22 @@ public class VoiceOrderService {
         prompt.append("2. 기념일이나 용도 질문 (예: 무슨 기념일인가요?)\n");
         prompt.append("3. 디너 추천 (2개 정도)\n");
         prompt.append("4. 고객이 디너를 선택하면, 해당 디너의 선택 가능한 스타일만 추천하고 제시하세요.\n");
-        prompt.append("5. 커스터마이징 의사 확인 - 해당 디너의 모든 메뉴 아이템을 한 번에 효율적으로 확인하세요.\n");
-        prompt.append("   - 각 항목마다 개별적으로 질문하지 말고, 기본 구성을 한 번에 제시한 후 수량 변경이 필요한 항목만 물어보세요.\n");
-        prompt.append("   - 예: \"기본 구성은 샴페인 1병, 스테이크 2개, 바게트빵 4개, 커피 1포트, 와인 2잔입니다. 수량을 변경하시겠어요?\"\n");
-        prompt.append("   - 고객이 변경을 원하면 변경할 항목과 수량을 한 번에 말하도록 안내하세요.\n");
-        prompt.append("   - 예: \"어떤 항목의 수량을 변경하시겠어요? 예를 들어 '샴페인 2병, 바게트빵 6개로 해주세요'처럼 말씀해주시면 됩니다.\"\n");
+        prompt.append("5. 커스터마이징 확인 - 기본 구성을 제시한 후 수량 변경이 필요한 항목만 물어보세요.\n");
         prompt.append("6. 주문 내역 확인 - 모든 메뉴 아이템을 빠짐없이 나열하세요.\n");
         prompt.append("7. 배달 날짜 확정 (내일, 모레 등 자연어 날짜 파싱)\n");
-        prompt.append("8. 주문 완료 및 [ORDER_COMPLETE] 태그로 데이터 반환\n\n");
+        prompt.append("8. 추가 필요 사항 확인 (\"추가로 필요하신 것 있으세요?\")\n");
+        prompt.append("9. 주문 완료 및 [ORDER_COMPLETE] 태그로 데이터 반환\n\n");
         
         prompt.append("**고객 정보:**\n");
         prompt.append("- 고객명: ").append(userName).append("\n\n");
         
         prompt.append("**이용 가능한 디너 메뉴:**\n");
         for (DinnerDTO dinner : dinners) {
-            prompt.append("- ").append(dinner.getName())
-                    .append(" (가격: ₩").append(String.format("%,.0f", dinner.getBasePrice())).append(")\n");
+            prompt.append("- ").append(dinner.getName()).append("\n");
             
-            // DB description 대신 실제 메뉴 아이템 기반 설명 생성
+            // 메뉴 특징 설명
             String accurateDescription = generateAccurateDescription(dinner);
-            prompt.append("  설명: ").append(accurateDescription).append("\n");
+            prompt.append("  특징: ").append(accurateDescription).append("\n");
             
             // 기본 구성 메뉴 아이템 표시
             List<MenuItemDTO> menuItems = dinnerMenuItems.getOrDefault(dinner.getId(), Collections.emptyList());
@@ -247,8 +204,6 @@ public class VoiceOrderService {
                     prompt.append(item.getName());
                     if (item.getDefaultQuantity() > 0) {
                         prompt.append(" ").append(item.getDefaultQuantity()).append(item.getUnit());
-                    } else {
-                        prompt.append(" (선택 옵션)");
                     }
                 }
                 prompt.append("\n");
@@ -260,7 +215,6 @@ public class VoiceOrderService {
                 prompt.append("  선택 가능한 스타일: ");
                 for (int i = 0; i < availableStyles.size(); i++) {
                     if (i > 0) prompt.append(", ");
-                    // 스타일 이름 찾기
                     String styleName = availableStyles.get(i);
                     for (StyleDTO style : styles) {
                         if (style.getId().equalsIgnoreCase(styleName) || style.getName().equalsIgnoreCase(styleName)) {
@@ -275,90 +229,14 @@ public class VoiceOrderService {
         }
         prompt.append("\n");
         
-        prompt.append("**이용 가능한 서빙 스타일:**\n");
-        for (StyleDTO style : styles) {
-            prompt.append("- ").append(style.getName())
-                    .append(" (추가 가격: ₩").append(String.format("%,.0f", style.getPriceModifier())).append(")\n");
-            if (style.getDetails() != null) {
-                prompt.append("  상세: ").append(style.getDetails()).append("\n");
-            }
-        }
-        prompt.append("\n");
-        
-        prompt.append("**중요: 디너별 스타일 선택 규칙:**\n");
+        prompt.append("**중요 규칙:**\n");
         prompt.append("1. 각 디너는 위에 명시된 '선택 가능한 스타일'만 선택할 수 있습니다.\n");
-        prompt.append("2. 고객이 디너를 선택하면, 반드시 해당 디너의 선택 가능한 스타일만 추천하고 제시하세요.\n");
-        prompt.append("3. 고객이 선택 불가능한 스타일을 요청하면, 해당 디너에서는 선택할 수 없다고 안내하고, 선택 가능한 스타일만 다시 제시하세요.\n");
-        prompt.append("4. 예를 들어, 'Champagne Feast' 디너는 'grand'와 'deluxe' 스타일만 선택 가능하며, 'simple' 스타일은 선택할 수 없습니다.\n");
-        prompt.append("5. 스타일을 선택할 때는 반드시 디너의 availableStyles 목록에 포함된 스타일만 ORDER_COMPLETE JSON에 기록하세요.\n\n");
-
-        prompt.append("**회원 기본 배송/결제 정보:**\n");
-        prompt.append("- 배송지: ").append(defaultAddress).append("\n");
-        prompt.append("- 결제 카드: ").append(maskedCard).append("\n\n");
-
-        prompt.append("**주문 완료 전 확인 절차:**\n");
-        prompt.append("1. 주문 완료 직전에 반드시 \"결제랑 주소는 기본 회원 정보로 하면 될까요?\"라고 고객에게 물어보세요.\n");
-        prompt.append("2. 위 질문과 함께 아래 정보를 그대로 안내하세요:\n");
-        prompt.append("   - 배송지: ").append(defaultAddress).append("\n");
-        prompt.append("   - 결제 카드: ").append(maskedCard).append("\n");
-        prompt.append("3. **매우 중요: 주문 내역을 정리할 때는 '커스터마이징' 항목에 변경된 것만 적지 말고, 해당 디너의 모든 구성 메뉴와 최종 수량을 빠짐없이 나열해 주세요.**\n");
-        prompt.append("   - 예: \"커스터마이징: 바게트빵 7개, 샴페인 3병\" (X) -> \"구성 메뉴: 스테이크 1개, 샐러드 1개, 바게트빵 7개, 샴페인 3병, 커피 1잔\" (O)\n");
-        prompt.append("   - 주문 내역 확인 시 반드시 해당 디너의 모든 메뉴 아이템을 빠짐없이 나열해야 합니다.\n");
-        prompt.append("4. 고객이 수정하거나 다른 정보를 원하면, 새로운 주소/결제 정보를 다시 확인한 뒤 ORDER_COMPLETE 데이터를 업데이트하세요.\n");
-        prompt.append("5. 고객 동의 없이 ORDER_COMPLETE를 출력하지 마세요.\n\n");
-
-        prompt.append("**디너별 커스터마이징 가능 항목:**\n");
-        for (DinnerDTO dinner : dinners) {
-            prompt.append("- ").append(dinner.getName()).append(":\n");
-            List<MenuItemDTO> menuItems = dinnerMenuItems.getOrDefault(dinner.getId(), Collections.emptyList());
-            if (menuItems.isEmpty()) {
-                prompt.append("  • 등록된 커스터마이징 항목 없음\n");
-            } else {
-                for (MenuItemDTO item : menuItems) {
-                    prompt.append("  • ").append(describeMenuItem(item)).append("\n");
-                }
-            }
-            prompt.append("  • 위 항목 외 옵션은 이 디너에서 제공되지 않으므로 절대 추가하지 말고, 고객에게 불가하다고 안내하세요.\n");
-        }
-        prompt.append("\n");
-        
-        prompt.append("**엄격한 메뉴 일치 규칙:**\n");
-        prompt.append("1. customizations JSON에는 반드시 선택된 디너의 메뉴 아이템만 포함해야 합니다.\n");
-        prompt.append("2. 다른 디너 전용 항목(예: French Dinner에서 샴페인)을 요청받으면, 해당 디너에서는 제공되지 않는다고 안내하고 필요한 경우 해당 항목을 제공하는 디너로 변경해야 한다고 설명하세요.\n");
-        prompt.append("3. 없는 항목을 임의로 추가하거나 가격을 추정하지 말고, 실제 옵션만 제시하세요.\n\n");
-
-        prompt.append("**배송/결제 정보 규칙:**\n");
-        prompt.append("1. 배송지와 결제 정보는 고객이 선택하거나 새로 제공한 값으로 확정하고, ORDER_COMPLETE JSON의 deliveryAddress 및 paymentInfo에 반드시 기록하세요.\n");
-        prompt.append("2. 고객이 \"기본 회원 정보\"를 사용하겠다고 하면 위에 제공된 기본 배송지/카드 문자열을 그대로 JSON에 입력하세요.\n");
-        prompt.append("3. 고객이 새 주소나 새 카드를 제공하면, 대화 중에는 민감 정보를 다시 읽어주고 확인하되 ORDER_COMPLETE JSON에는 고객이 알려준 원본 문자열을 그대로 기록하세요.\n");
-        prompt.append("4. 카드번호는 공백 포함 전체 숫자를 저장해야 하며, 마스킹하거나 일부만 기록하면 안 됩니다.\n");
-        prompt.append("5. 어떤 정보도 알 수 없으면 ORDER_COMPLETE를 출력하지 말고 필요한 정보를 다시 질문하세요.\n\n");
-        
-        prompt.append("**중요: 커스터마이징 및 가격 계산 규칙:**\n");
-        prompt.append("1. 각 디너는 위에 표시된 '기본 구성'을 포함하고 있으며, 기본 가격에 이미 반영되어 있습니다.\n");
-        prompt.append("2. 기본 수량이 0개인 항목은 선택 옵션이며, 기본 가격에 포함되지 않습니다.\n");
-        prompt.append("3. 커스터마이징 시:\n");
-        prompt.append("   - 기본 구성 품목의 수량을 기본값 그대로 유지하면 추가 요금이 없습니다.\n");
-        prompt.append("   - 기본 수량보다 증가시키면 증가분만큼 추가 요금이 발생합니다.\n");
-        prompt.append("   - 기본 수량보다 감소시키면 감소분만큼 할인됩니다.\n");
-        prompt.append("   - 선택 옵션(기본 0개)을 추가하면 추가한 수량만큼 요금이 발생합니다.\n");
-        prompt.append("4. **매우 중요: customizations JSON에는 선택된 디너의 모든 메뉴 아이템을 빠짐없이 포함해야 합니다.**\n");
-        prompt.append("   - 변경된 항목만 기록하는 것이 아니라, 해당 디너의 모든 메뉴 아이템의 최종 수량을 모두 기록해야 합니다.\n");
-        prompt.append("   - 예: French Dinner의 경우 기본이 '스테이크 1개, 샐러드 1개, 커피 1잔, 와인 1잔'인데,\n");
-        prompt.append("     고객이 커피를 2잔으로 늘리고 와인을 0잔으로 줄이면:\n");
-        prompt.append("     {\"스테이크\": 1, \"샐러드\": 1, \"커피\": 2, \"와인\": 0}\n");
-        prompt.append("   - 기본값 그대로여도 모든 항목을 포함해야 합니다.\n");
-        prompt.append("   - 위에 표시된 '디너별 커스터마이징 가능 항목' 목록의 모든 항목을 customizations에 포함해야 합니다.\n");
-        prompt.append("5. **주문 완료 조건:**\n");
-        prompt.append("   - 모든 정보(디너, 스타일, 배달 날짜, 커스터마이징)가 확정되면 바로 [ORDER_COMPLETE] 태그를 사용하세요.\n");
-        prompt.append("   - 고객에게 확인을 받을 필요 없이, 모든 정보가 충족되면 즉시 [ORDER_COMPLETE] 태그를 포함하세요.\n");
-        prompt.append("   - [ORDER_COMPLETE] 태그는 응답에 포함되지만, 고객에게는 보이지 않습니다.\n\n");
-        
-        prompt.append("**배달 날짜 규칙:**\n");
-        prompt.append("- 배달 날짜는 오늘 이후 날짜로 지정해야 합니다.\n");
-        prompt.append("- 고객이 '내일'이라고 하면 오늘 날짜 기준으로 계산하세요.\n");
-        prompt.append("- 고객이 '모레'라고 하면 오늘로부터 2일 후로 계산하세요.\n");
-        prompt.append("- 오늘 날짜: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))).append("\n\n");
+        prompt.append("2. customizations JSON에는 선택된 디너의 모든 메뉴 아이템의 최종 수량을 빠짐없이 포함해야 합니다.\n");
+        prompt.append("3. 주문 내역 확인 시 반드시 해당 디너의 모든 메뉴 아이템을 빠짐없이 나열해야 합니다.\n");
+        prompt.append("4. 배달 날짜는 오늘 이후 날짜로 지정해야 합니다. '내일'은 오늘 기준 +1일, '모레'는 +2일입니다.\n");
+        prompt.append("5. 오늘 날짜: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))).append("\n");
+        prompt.append("6. 배송지와 결제 정보는 자동으로 처리되므로, 대화에서 확인하지 마세요.\n");
+        prompt.append("7. 모든 정보(디너, 스타일, 배달 날짜, 커스터마이징)가 확정되면 바로 [ORDER_COMPLETE] 태그를 사용하세요.\n\n");
         
         prompt.append("항상 친절하고 자연스러운 대화를 유지하세요.");
         
@@ -383,7 +261,7 @@ public class VoiceOrderService {
                             logger.info("📝 추출된 JSON: {}", jsonStr);
                             
                             JsonNode jsonNode = objectMapper.readTree(jsonStr);
-                            VoiceOrderDataDTO orderData = parseOrderDataFromJson(jsonNode);
+                            VoiceOrderDataDTO orderData = parseOrderDataFromJson(jsonNode, sessionId);
                             
                             logger.info("📦 파싱된 주문 데이터: dinnerId={}, styleId={}, deliveryDate={}", 
                                     orderData.getDinnerId(), orderData.getStyleId(), orderData.getDeliveryDate());
@@ -404,19 +282,21 @@ public class VoiceOrderService {
         return null;
     }
 
-    private VoiceOrderDataDTO parseOrderDataFromJson(JsonNode json) {
+    private VoiceOrderDataDTO parseOrderDataFromJson(JsonNode json, String sessionId) {
         String dinnerName = json.has("dinnerName") ? json.get("dinnerName").asText() : null;
         String styleName = json.has("styleName") ? json.get("styleName").asText() : null;
         String deliveryDate = json.has("deliveryDate") ? json.get("deliveryDate").asText() : null;
-        String deliveryAddress = json.has("deliveryAddress") ? json.get("deliveryAddress").asText() : null;
-        String cardNumber = null;
-        String cardExpiry = null;
-        String cardCvc = null;
+        
+        // 배송지와 결제 정보는 기본값으로 설정
+        String deliveryAddress = json.has("deliveryAddress") ? json.get("deliveryAddress").asText() : "기본 주소";
+        String cardNumber = "1234 5678 9012 3456";
+        String cardExpiry = "12/25";
+        String cardCvc = "123";
         if (json.has("paymentInfo") && json.get("paymentInfo").isObject()) {
             JsonNode paymentInfo = json.get("paymentInfo");
-            cardNumber = paymentInfo.has("cardNumber") ? paymentInfo.get("cardNumber").asText() : null;
-            cardExpiry = paymentInfo.has("cardExpiry") ? paymentInfo.get("cardExpiry").asText() : null;
-            cardCvc = paymentInfo.has("cardCvc") ? paymentInfo.get("cardCvc").asText() : null;
+            if (paymentInfo.has("cardNumber")) cardNumber = paymentInfo.get("cardNumber").asText();
+            if (paymentInfo.has("cardExpiry")) cardExpiry = paymentInfo.get("cardExpiry").asText();
+            if (paymentInfo.has("cardCvc")) cardCvc = paymentInfo.get("cardCvc").asText();
         }
         
         logger.info("🔍 JSON에서 추출: dinnerName={}, styleName={}, deliveryDate={}", 
