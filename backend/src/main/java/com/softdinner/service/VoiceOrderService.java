@@ -174,13 +174,13 @@ public class VoiceOrderService {
         
         prompt.append("**대화 시나리오:**\n");
         prompt.append("1. 인사 및 주문 의도 확인\n");
-        prompt.append("2. 기념일이나 용도 질문 (예: 무슨 기념일인가요?) 답변에서 기념일 날짜 유추해서 반환\n");
+        prompt.append("2. 기념일이나 용도 질문 (예: 무슨 기념일인가요?) 답변에서 배달 날짜를 유추하세요.\n");
         prompt.append("3. 디너 추천 (2개 정도)\n");
         prompt.append("4. 고객이 디너를 선택하면, 해당 디너의 선택 가능한 스타일만 추천하고 제시하세요.\n");
         prompt.append("5. 커스터마이징 확인 - 기본 구성을 제시한 후 수량 변경이 필요한 항목만 물어보세요.\n");
         prompt.append("6. 주문 내역 확인 - 모든 메뉴 아이템을 빠짐없이 나열하세요.\n");
         prompt.append("7. 배달 날짜 확정 (내일, 모레 등 자연어 날짜 파싱)\n");
-        prompt.append("8. 추가 필요 사항 확인 (\"추가로 필요하신 것 있으세요?\")\n");
+        prompt.append("8. 추가 필요 사항 확인 (\"추가로 필요하신 것 있으세요?\"), 사용자의 주소와 결제 정보는 묻지 마세요.\n");
         prompt.append("9. 주문 완료 및 [ORDER_COMPLETE] 태그로 데이터 반환\n\n");
         
         prompt.append("**고객 정보:**\n");
