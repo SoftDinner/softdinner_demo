@@ -44,25 +44,25 @@ public class VoiceOrderController {
     @PostMapping("/start")
     public ResponseEntity<?> startSession() {
         try {
-            // 인증된 사용자 정보 가져오기
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            UserResponseDTO user = null;
             String userName = "고객";
-            
-            if (auth != null && auth.getPrincipal() instanceof UserDetails) {
-                UserDetails userDetails = (UserDetails) auth.getPrincipal();
+
+            if (auth != null && auth.getPrincipal() instanceof UserDetails userDetails) {
                 String userId = userDetails.getUsername();
-                
                 try {
-                    UserResponseDTO user = authService.getCurrentUser(userId);
-                    userName = user.getFullName() != null ? user.getFullName() : "고객";
+                    user = authService.getCurrentUser(userId);
+                    if (user != null && user.getFullName() != null) {
+                        userName = user.getFullName();
+                    }
                 } catch (Exception e) {
                     logger.warn("사용자 정보 조회 실패, 기본값 사용: {}", e.getMessage());
                 }
             }
-            
+
             logger.info("🎤 음성 주문 세션 시작 - 사용자: {}", userName);
-            
-            VoiceChatResponseDTO response = voiceOrderService.startSession(userName);
+
+            VoiceChatResponseDTO response = voiceOrderService.startSession(user);
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
@@ -106,33 +106,34 @@ public class VoiceOrderController {
     @PostMapping("/chat")
     public ResponseEntity<?> processChat(@RequestBody VoiceChatRequestDTO request) {
         try {
-            logger.info("💬 대화 처리 요청 - 세션: {}, 메시지: {}", 
-                    request.getSessionId(), request.getUserMessage());
-            
-            // 인증된 사용자 정보 가져오기
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            UserResponseDTO user = null;
             String userName = "고객";
-            
-            if (auth != null && auth.getPrincipal() instanceof UserDetails) {
-                UserDetails userDetails = (UserDetails) auth.getPrincipal();
+
+            if (auth != null && auth.getPrincipal() instanceof UserDetails userDetails) {
                 String userId = userDetails.getUsername();
-                
+
                 try {
-                    UserResponseDTO user = authService.getCurrentUser(userId);
-                    userName = user.getFullName() != null ? user.getFullName() : "고객";
+                    user = authService.getCurrentUser(userId);
+                    if (user != null && user.getFullName() != null) {
+                        userName = user.getFullName();
+                    }
                 } catch (Exception e) {
                     logger.warn("사용자 정보 조회 실패, 기본값 사용: {}", e.getMessage());
                 }
             }
-            
+
+            logger.info("💬 대화 처리 요청 - 사용자: {}, 세션: {}, 메시지: {}",
+                    userName, request.getSessionId(), request.getUserMessage());
+
             VoiceChatResponseDTO response = voiceOrderService.processConversation(
-                    request.getSessionId(), 
+                    request.getSessionId(),
                     request.getUserMessage(),
-                    userName
+                    user
             );
-            
+
             return ResponseEntity.ok(response);
-            
+
         } catch (Exception e) {
             logger.error("대화 처리 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

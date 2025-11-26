@@ -142,7 +142,7 @@ export default function AuthPage() {
       <main className="flex-1 min-h-screen flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
           <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
-            <h1 className="text-3xl font-serif font-bold text-center text-foreground mb-2">
+            <h1 className="text-3xl font-bold text-center text-foreground mb-2">
               {isLogin ? "로그인" : "회원가입"}
             </h1>
             <p className="text-center text-muted-foreground mb-8">

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -24,14 +23,16 @@ public class OpenAIService {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAIService.class);
 
-    private final WebClient openAIWebClient;
+    private final WebClient openAIWebClient;  // Whisper API용
+    private final WebClient openRouterWebClient;  // GPT용
     private final ObjectMapper objectMapper;
 
-    @Value("${openai.api-key}")
-    private String apiKey;
-
-    public OpenAIService(@Qualifier("openAIWebClient") WebClient openAIWebClient, ObjectMapper objectMapper) {
+    public OpenAIService(
+            @Qualifier("openAIWebClient") WebClient openAIWebClient,
+            @Qualifier("openRouterWebClient") WebClient openRouterWebClient,
+            ObjectMapper objectMapper) {
         this.openAIWebClient = openAIWebClient;
+        this.openRouterWebClient = openRouterWebClient;
         this.objectMapper = objectMapper;
     }
 
@@ -78,13 +79,20 @@ public class OpenAIService {
         logger.info("💬 GPT API 호출 시작 - 메시지 수: {}", messages.size());
 
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-4-turbo-preview");
+        requestBody.put("model", "openai/gpt-oss-20b:free");
         requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.1);
         requestBody.put("max_tokens", 1000);
+        
+        // reasoning 설정
+        Map<String, Object> extraBody = new HashMap<>();
+        Map<String, Object> reasoning = new HashMap<>();
+        reasoning.put("enabled", false);
+        extraBody.put("reasoning", reasoning);
+        requestBody.put("extra_body", extraBody);
 
         try {
-            String response = openAIWebClient.post()
+            String response = openRouterWebClient.post()
                     .uri("/chat/completions")
                     .bodyValue(requestBody)
                     .retrieve()
@@ -109,14 +117,21 @@ public class OpenAIService {
         logger.info("💬 GPT API (with functions) 호출 시작");
 
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "gpt-4-turbo-preview");
+        requestBody.put("model", "openai/gpt-oss-20b:free");
         requestBody.put("messages", messages);
         requestBody.put("functions", functions);
         requestBody.put("function_call", "auto");
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.1);
+        
+        // reasoning 설정
+        Map<String, Object> extraBody = new HashMap<>();
+        Map<String, Object> reasoning = new HashMap<>();
+        reasoning.put("enabled", false);
+        extraBody.put("reasoning", reasoning);
+        requestBody.put("extra_body", extraBody);
 
         try {
-            String response = openAIWebClient.post()
+            String response = openRouterWebClient.post()
                     .uri("/chat/completions")
                     .bodyValue(requestBody)
                     .retrieve()

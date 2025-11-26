@@ -12,19 +12,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { useIngredients } from "@/hooks/useIngredients"
 import { ingredientAPI } from "@/lib/services/ingredient.service"
 
-// 아이콘 매핑
-const getIngredientIcon = (name) => {
-  const iconMap = {
-    "고기": "🥩",
-    "채소": "🥬",
-    "와인": "🍷",
-    "샴페인": "🍾",
-    "커피": "☕",
-    "바게트빵": "🥖",
-    "계란": "🥚",
-  }
-  return iconMap[name] || "📦"
-}
 
 export default function StaffIngredientsPage() {
   const router = useRouter()
@@ -148,10 +135,7 @@ export default function StaffIngredientsPage() {
                       ) : (
                         ingredients.map((ingredient) => (
                           <SelectItem key={ingredient.id} value={ingredient.id}>
-                            <span className="flex items-center gap-2">
-                              <span>{getIngredientIcon(ingredient.name)}</span>
-                              <span>{ingredient.name}</span>
-                            </span>
+                            {ingredient.name}
                           </SelectItem>
                         ))
                       )}
@@ -220,7 +204,6 @@ export default function StaffIngredientsPage() {
                     return (
                       <div key={log.id} className="flex items-center justify-between text-sm border-b pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xl">{getIngredientIcon(log.ingredientName || "")}</span>
                           <span>{log.ingredientName || "알 수 없음"}</span>
                         </div>
                         <div className="text-right">
@@ -271,7 +254,6 @@ export default function StaffIngredientsPage() {
                       <Card key={ingredient.id} className={`p-4 ${isLow ? "border-red-300 bg-red-50" : ""}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <span className="text-3xl">{getIngredientIcon(ingredient.name)}</span>
                             <div>
                               <p className="font-bold">{ingredient.name}</p>
                               <p className="text-xs text-muted-foreground">{ingredient.unit}</p>
