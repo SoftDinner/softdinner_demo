@@ -83,6 +83,13 @@ public class OpenAIService {
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.1);
         requestBody.put("max_tokens", 1000);
+        
+        // reasoning 설정
+        Map<String, Object> extraBody = new HashMap<>();
+        Map<String, Object> reasoning = new HashMap<>();
+        reasoning.put("enabled", false);
+        extraBody.put("reasoning", reasoning);
+        requestBody.put("extra_body", extraBody);
 
         try {
             String response = openRouterWebClient.post()
@@ -115,6 +122,13 @@ public class OpenAIService {
         requestBody.put("functions", functions);
         requestBody.put("function_call", "auto");
         requestBody.put("temperature", 0.1);
+        
+        // reasoning 설정
+        Map<String, Object> extraBody = new HashMap<>();
+        Map<String, Object> reasoning = new HashMap<>();
+        reasoning.put("enabled", false);
+        extraBody.put("reasoning", reasoning);
+        requestBody.put("extra_body", extraBody);
 
         try {
             String response = openRouterWebClient.post()

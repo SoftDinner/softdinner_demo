@@ -198,16 +198,17 @@ public class VoiceOrderService {
             // 기본 구성 메뉴 아이템 표시
             List<MenuItemDTO> menuItems = dinnerMenuItems.getOrDefault(dinner.getId(), Collections.emptyList());
             if (!menuItems.isEmpty()) {
-                prompt.append("  기본 구성: ");
-                for (int i = 0; i < menuItems.size(); i++) {
-                    MenuItemDTO item = menuItems.get(i);
-                    if (i > 0) prompt.append(", ");
-                    prompt.append(item.getName());
-                    if (item.getDefaultQuantity() > 0) {
-                        prompt.append(" ").append(item.getDefaultQuantity()).append(item.getUnit());
+                prompt.append("  기본 구성:\n");
+                for (MenuItemDTO item : menuItems) {
+                    String quantity = "0";
+                    if (item.getDefaultQuantity() != null && item.getDefaultQuantity() > 0) {
+                        quantity = String.valueOf(item.getDefaultQuantity());
+                        if (item.getUnit() != null && !item.getUnit().isBlank()) {
+                            quantity += item.getUnit();
+                        }
                     }
+                    prompt.append("  | ").append(item.getName()).append(" | ").append(quantity).append(" |\n");
                 }
-                prompt.append("\n");
             }
             
             // 디너별 선택 가능한 스타일 명시
