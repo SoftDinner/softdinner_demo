@@ -81,7 +81,7 @@ public class OpenAIService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", "openai/gpt-oss-20b:free");
         requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.2);
+        requestBody.put("temperature", 0.1);
         requestBody.put("max_tokens", 1000);
 
         try {
@@ -114,7 +114,7 @@ public class OpenAIService {
         requestBody.put("messages", messages);
         requestBody.put("functions", functions);
         requestBody.put("function_call", "auto");
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.1);
 
         try {
             String response = openRouterWebClient.post()
