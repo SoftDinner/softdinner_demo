@@ -88,7 +88,7 @@ public class VoiceOrderService {
         messages.add(createMessage("assistant", assistantResponse));
         
         // 주문 완료 여부 확인 (주문 데이터 추출 시도)
-        VoiceOrderDataDTO orderData = extractOrderData(messages, sessionId);
+        VoiceOrderDataDTO orderData = extractOrderData(messages, sessionId, user);
         boolean isComplete = checkIfOrderComplete(assistantResponse, orderData);
         
         if (isComplete) {
@@ -162,12 +162,6 @@ public class VoiceOrderService {
         prompt.append("    \"dinnerName\": \"디너명\",\n");
         prompt.append("    \"styleName\": \"스타일명\",\n");
         prompt.append("    \"deliveryDate\": \"YYYY-MM-DD\",\n");
-        prompt.append("    \"deliveryAddress\": \"기본 주소\",\n");
-        prompt.append("    \"paymentInfo\": {\n");
-        prompt.append("      \"cardNumber\": \"1234 5678 9012 3456\",\n");
-        prompt.append("      \"cardExpiry\": \"12/25\",\n");
-        prompt.append("      \"cardCvc\": \"123\"\n");
-        prompt.append("    },\n");
         prompt.append("    \"customizations\": {\"메뉴아이템명\": 수량}\n");
         prompt.append("  }\n");
         prompt.append("  [/ORDER_COMPLETE]\n\n");
@@ -258,7 +252,7 @@ public class VoiceOrderService {
         return prompt.toString();
     }
 
-    private VoiceOrderDataDTO extractOrderData(List<Map<String, String>> messages, String sessionId) {
+    private VoiceOrderDataDTO extractOrderData(List<Map<String, String>> messages, String sessionId, UserResponseDTO user) {
         // 마지막 assistant 메시지에서 주문 데이터 추출
         for (int i = messages.size() - 1; i >= 0; i--) {
             Map<String, String> msg = messages.get(i);
@@ -276,7 +270,7 @@ public class VoiceOrderService {
                             logger.info("📝 추출된 JSON: {}", jsonStr);
                             
                             JsonNode jsonNode = objectMapper.readTree(jsonStr);
-                            VoiceOrderDataDTO orderData = parseOrderDataFromJson(jsonNode, sessionId);
+                            VoiceOrderDataDTO orderData = parseOrderDataFromJson(jsonNode, sessionId, user);
                             
                             logger.info("📦 파싱된 주문 데이터: dinnerId={}, styleId={}, deliveryDate={}", 
                                     orderData.getDinnerId(), orderData.getStyleId(), orderData.getDeliveryDate());
@@ -297,16 +291,25 @@ public class VoiceOrderService {
         return null;
     }
 
-    private VoiceOrderDataDTO parseOrderDataFromJson(JsonNode json, String sessionId) {
+    private VoiceOrderDataDTO parseOrderDataFromJson(JsonNode json, String sessionId, UserResponseDTO user) {
         String dinnerName = json.has("dinnerName") ? json.get("dinnerName").asText() : null;
         String styleName = json.has("styleName") ? json.get("styleName").asText() : null;
         String deliveryDate = json.has("deliveryDate") ? json.get("deliveryDate").asText() : null;
         
-        // 배송지와 결제 정보는 기본값으로 설정
-        String deliveryAddress = json.has("deliveryAddress") ? json.get("deliveryAddress").asText() : "기본 주소";
-        String cardNumber = "1234 5678 9012 3456";
-        String cardExpiry = "12/25";
-        String cardCvc = "123";
+        // 배송지와 결제 정보는 사용자 DB 정보에서 가져오기
+        String deliveryAddress = (user != null && user.getAddress() != null && !user.getAddress().isBlank()) 
+                ? user.getAddress() : "기본 주소";
+        String cardNumber = (user != null && user.getCardNumber() != null && !user.getCardNumber().isBlank()) 
+                ? user.getCardNumber() : "1234 5678 9012 3456";
+        String cardExpiry = (user != null && user.getCardExpiry() != null && !user.getCardExpiry().isBlank()) 
+                ? user.getCardExpiry() : "12/25";
+        String cardCvc = (user != null && user.getCardCvc() != null && !user.getCardCvc().isBlank()) 
+                ? user.getCardCvc() : "123";
+        
+        // JSON에서 명시적으로 제공된 경우 우선 사용
+        if (json.has("deliveryAddress")) {
+            deliveryAddress = json.get("deliveryAddress").asText();
+        }
         if (json.has("paymentInfo") && json.get("paymentInfo").isObject()) {
             JsonNode paymentInfo = json.get("paymentInfo");
             if (paymentInfo.has("cardNumber")) cardNumber = paymentInfo.get("cardNumber").asText();
